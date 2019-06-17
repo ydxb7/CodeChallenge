@@ -1,7 +1,13 @@
 package com.example.android.codechallenge;
 
+import android.content.Context;
+import android.content.res.AssetManager;
+import android.net.Uri;
 import android.util.JsonReader;
+import android.util.JsonToken;
 import android.util.Log;
+import android.widget.Toast;
+import android.util.JsonReader;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -17,6 +23,9 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.net.ssl.HttpsURLConnection;
+import javax.sql.DataSource;
 
 public class QueryUtils {
 
@@ -40,31 +49,38 @@ public class QueryUtils {
      * Make an HTTP request to the given URL and return a String as the response.
      */
     public static List<Message> makeHttpRequest(URL url) throws IOException {
-        List<Message> jsonResponses = new ArrayList<>();
+        List<Message> messages = new ArrayList<Message>();
 
         // if the url is null, then return early
         if(url == null){
-            return jsonResponses;
+            return messages;
         }
 
         HttpURLConnection urlConnection = null;
         InputStream inputStream = null;
         try {
-            urlConnection = (HttpURLConnection) url.openConnection();
+            urlConnection = (HttpsURLConnection) url.openConnection();
+            // Timeout for reading InputStream arbitrarily set to 3000ms.
+            urlConnection.setReadTimeout(3000);
+            // Timeout for connection.connect() arbitrarily set to 3000ms.
+            urlConnection.setConnectTimeout(3000);
+            // For this use case, set HTTP method to GET.
             urlConnection.setRequestMethod("GET");
-            urlConnection.setReadTimeout(10000 /* milliseconds */);
-            urlConnection.setConnectTimeout(15000 /* milliseconds */);
+            // Already true by default but setting just in case; needs to be true since this request
+            // is carrying an input (response) body.
+            urlConnection.setDoInput(true);
+            // Open communications link (network traffic occurs here).
             urlConnection.connect();
-
-            // if the response was successful (response code 200), then read the input stream and parse the response.
-            if(urlConnection.getResponseCode() == 200){
-                inputStream = urlConnection.getInputStream();
-                jsonResponses = readFromStream(inputStream);
-
-            } else{
-                Log.e(LOG_TAG, "Error response code: " + urlConnection.getResponseCode());
+            int responseCode = urlConnection.getResponseCode();
+            if (responseCode != HttpsURLConnection.HTTP_OK) {
+                throw new IOException("HTTP error code: " + responseCode);
             }
+            // Retrieve the response body as an InputStream.
+            inputStream = urlConnection.getInputStream();
+            messages = readFromStream(inputStream);
+
         } catch (IOException e) {
+            // Handle the exception
             Log.e(LOG_TAG, "Problem retrieving the earthquake JSON results.", e);
         } finally {
             if (urlConnection != null) {
@@ -75,54 +91,8 @@ public class QueryUtils {
                 inputStream.close();
             }
         }
-        return jsonResponses;
+        return messages;
     }
-
-    /**
-     * Return a list of {@link Message} objects that has been built up from
-     * parsing a JSON response.
-     */
-    public static Message transferJsonToMessage(String oneLineJsonResponse) {
-        if(oneLineJsonResponse == null || oneLineJsonResponse.length() < 1){
-            return null;
-        }
-
-        Message message = null;
-
-        // Try to parse the SAMPLE_JSON_RESPONSE. If there's a problem with the way the JSON
-        // is formatted, a JSONException exception object will be thrown.
-        // Catch the exception so the app doesn't crash, and print the error message to the logs.
-        try {
-
-            // Parse the response given by the SAMPLE_JSON_RESPONSE string and
-            // build up a list of Earthquake objects with the corresponding data.
-            JSONObject root = new JSONObject(oneLineJsonResponse);
-
-            JSONObject toObject = root.getJSONObject("to");
-            String toName = toObject.getString("name");
-
-            JSONObject fromObject = root.getJSONObject("from");
-            String fromName = fromObject.getString("name");
-
-            long timeInMilliseconds = root.getLong("timestamp");
-
-            boolean areFriends = root.getBoolean("areFriends");
-
-            message = new Message(toName, fromName, timeInMilliseconds, areFriends);
-
-
-        } catch (JSONException e) {
-            // If an error is thrown when executing any of the above statements in the "try" block,
-            // catch the exception here, so the app doesn't crash. Print a log message
-            // with the message from the exception.
-            Log.e("QueryUtilsaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", oneLineJsonResponse);
-            Log.e("QueryUtils", "Problem parsing the Message JSON results", e);
-        }
-
-        // Return the Message instance
-        return message;
-    }
-
 
 
     public static List<Message> fetchData(String url_string){
@@ -144,30 +114,69 @@ public class QueryUtils {
         return messages;
     }
 
-    /**
-     * Convert the {@link InputStream} into a String which contains the
-     * whole JSON response from the server.
-     */
-    public static List<Message> readFromStream(InputStream inputStream) throws IOException {
-//        StringBuilder output = new StringBuilder();
-        List<Message> output = new ArrayList<>();
 
-        if (inputStream != null) {
-            // inputStream里存放的不是string是0101，因为我们知道里面应该是string，所以把inputStream里的0101，转换成string
-            // 为了开始从inputStream中读取数据，我们将inputStream作为构造函数的一个参数传递给InputStreamReader
-            InputStreamReader inputStreamReader = new InputStreamReader(inputStream, Charset.forName("UTF-8"));
-            // inputStreamReader一次只能读一个字符，很慢，所以将inputStreamReader包装到BufferedReader中
-            // BufferedReader在接收到对某个字符的请求后，会读取并保存该字符前后的一大块数据
-            // 当继续请求另一个字符时，BufferedReader就能够利用提前读取的数据，来满足请求，而无需再回到inputStreamReader
-            BufferedReader reader = new BufferedReader(inputStreamReader);
-            String line = reader.readLine();
-            for(int i = 0; i < 100; i++){
-                Message message = transferJsonToMessage(line);
-                output.add(message);
-                line = reader.readLine();
-            }
-
+    public static List<Message> readFromStream(InputStream in) throws IOException {
+        JsonReader reader = new JsonReader(new InputStreamReader(in, "UTF-8"));
+        reader.setLenient(true);
+        try {
+            return readMessagesObjects(reader);
+        } finally {
+            reader.close();
         }
-        return output;
+    }
+
+    public static List<Message> readMessagesObjects(JsonReader reader) throws IOException {
+        List<Message> messages = new ArrayList<Message>();
+
+        int i = 0;
+        while (reader.hasNext() && i <= 200) {
+            messages.add(readMessage(reader));
+            i++;
+        }
+        return messages;
+    }
+
+
+    public static Message readMessage(JsonReader reader) throws IOException {
+        String toName = null;
+        String fromName = null;
+        Long timeInMilliseconds = null;
+        boolean areFriends = false;
+
+        reader.beginObject();
+        while (reader.hasNext()) {
+            String name = reader.nextName();
+
+            if (name.equals("to")) {
+                toName = readName(reader);
+            } else if (name.equals("from")) {
+                fromName = readName(reader);
+            } else if (name.equals("timestamp")) {
+                timeInMilliseconds = reader.nextLong();
+            } else if (name.equals("areFriends")) {
+                areFriends = reader.nextBoolean();
+            }else {
+                reader.skipValue();
+            }
+        }
+        reader.endObject();
+        Message message = new Message(toName, fromName, timeInMilliseconds, areFriends);
+        return message;
+    }
+
+    public static String readName(JsonReader reader) throws IOException {
+        String username = null;
+
+        reader.beginObject();
+        while (reader.hasNext()) {
+            String name = reader.nextName();
+            if (name.equals("name")) {
+                username = reader.nextString();
+            }else {
+                reader.skipValue();
+            }
+        }
+        reader.endObject();
+        return username;
     }
 }

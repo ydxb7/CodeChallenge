@@ -2,4 +2,5 @@
     <string name="app_name">CodeChallenge</string>
     <string name="refresh">Refresh</string>
     <string name="no_data">No Data</string>
+    <string name="sample_list_load_error">Sample list load error</string>
 </resources>
