@@ -23,7 +23,7 @@ import android.widget.TextView;
 
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<List<String>> {
+public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<List<Message>> {
 
     public static final String LOG_TAG = MainActivity.class.getName();
     private RecyclerView mRecyclerView;
@@ -121,7 +121,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
 
 
     @Override
-    public Loader<List<String>> onCreateLoader(int id, Bundle args) {
+    public Loader<List<Message>> onCreateLoader(int id, Bundle args) {
         mLoadingIndicator.setVisibility(View.VISIBLE);
         Log.v(LOG_TAG , CODE_CHALLENGE_URL + "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
         // Create a new loader for the given URL
@@ -129,7 +129,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     }
 
     @Override
-    public void onLoadFinished(Loader<List<String>> loader, List<String> data) {
+    public void onLoadFinished(Loader<List<Message>> loader, List<Message> data) {
         // Hide loading indicator because the data has been loaded
         mLoadingIndicator.setVisibility(View.GONE);
 
@@ -144,7 +144,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     }
 
     @Override
-    public void onLoaderReset(Loader<List<String>> loader) {
+    public void onLoaderReset(Loader<List<Message>> loader) {
 
     }
 }

@@ -5,7 +5,7 @@ import android.support.v4.content.AsyncTaskLoader;
 
 import java.util.List;
 
-public class MessageLoader extends AsyncTaskLoader<List<String>> {
+public class MessageLoader extends AsyncTaskLoader<List<Message>> {
 
     private String mUrl;
     private static String LOG_TAG = MessageLoader.class.getSimpleName();
@@ -18,12 +18,12 @@ public class MessageLoader extends AsyncTaskLoader<List<String>> {
 
 
     @Override
-    public List<String> loadInBackground() {
+    public List<Message> loadInBackground() {
         if (mUrl == null) {
             return null;
         }
         // 执行网络请求、解析响应和提取列表。
-        List<String> data = QueryUtils.fetchData(mUrl);
+        List<Message> data = QueryUtils.fetchData(mUrl);
         return data;
     }
 

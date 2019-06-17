@@ -8,14 +8,16 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageViewHolder>{
     private static final String TAG = MessageAdapter.class.getSimpleName();
 
     private static final ArrayList<String> mDummyData = new ArrayList<>();
-    private static List<String> mData = new ArrayList<>();
+    private static List<Message> mMessages = new ArrayList<>();
 
     public MessageAdapter(){
 //        mDummyData.add("message1");
@@ -55,28 +57,64 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
     // OnBindViewHolder is called by the RecyclerView to display the data at the specified position.
     @Override
     public void onBindViewHolder(MessageViewHolder messageViewHolder, int position) {
-        messageViewHolder.itemTextView.setText(mData.get(position));
+        Message message = mMessages.get(position);
+
+        messageViewHolder.toNameTextView.setText(message.getToName());
+        messageViewHolder.fromNameTextView.setText(message.getFromName());
+        if(message.getAreFriends()){
+            messageViewHolder.areFriendsTextView.setText("Friends");
+        }else {
+            messageViewHolder.areFriendsTextView.setText("Not Friends");
+        }
+
+        Date dateObject = new Date(message.getTime());
+        String date = formatDate(dateObject);
+        messageViewHolder.dateTextView.setText(date);
+        String time = formatTime(dateObject);
+        messageViewHolder.timeTextView.setText(time);
+
     }
 
     @Override
     public int getItemCount() {
-        return mData.size();
+        return mMessages.size();
     }
 
 
     class MessageViewHolder extends RecyclerView.ViewHolder{
-        TextView itemTextView;
+        TextView toNameTextView;
+        TextView fromNameTextView;
+        TextView timeTextView;
+        TextView dateTextView;
+        TextView areFriendsTextView;
 
         public MessageViewHolder(View itemView) {
             super(itemView);
-            itemTextView = itemView.findViewById(R.id.item_text_view);
+            toNameTextView = itemView.findViewById(R.id.to_name_text_view);
+            fromNameTextView = itemView.findViewById(R.id.from_name_text_view);
+            timeTextView = itemView.findViewById(R.id.time_text_view);
+            dateTextView = itemView.findViewById(R.id.date_text_view);
+            areFriendsTextView = itemView.findViewById(R.id.are_friends_text_view);
         }
     }
 
     //This method is used to set the data we get from the web.
 
-    public void setMessageData(List<String> data) {
-        mData = data;
+    public void setMessageData(List<Message> data) {
+        mMessages = data;
         notifyDataSetChanged();
+    }
+
+
+    private String formatDate(Date dateObject) {
+        SimpleDateFormat dateFormatter = new SimpleDateFormat("MMM DD, yyyy");
+        String dateToDisplay = dateFormatter.format(dateObject);
+        return dateToDisplay;
+    }
+
+    private String formatTime(Date dateObject) {
+        SimpleDateFormat dateFormatter = new SimpleDateFormat("HH:mm a");
+        String timeToDisplay = dateFormatter.format(dateObject);
+        return timeToDisplay;
     }
 }
