@@ -3,6 +3,7 @@ package com.example.android.codechallenge;
 import android.content.Context;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -68,11 +69,12 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
         }
 
         Date dateObject = new Date(message.getTime());
-        String date = formatDate(dateObject);
-        messageViewHolder.dateTextView.setText(date);
-        String time = formatTime(dateObject);
-        messageViewHolder.timeTextView.setText(time);
 
+        SimpleDateFormat timeFormatter = new SimpleDateFormat("hh:mm:ss MM/dd/yyyy");
+        String timeString = timeFormatter.format(dateObject);
+        messageViewHolder.timeTextView.setText(timeString);
+
+        messageViewHolder.listIndexTextView.setText(String.valueOf(position));
     }
 
     @Override
@@ -85,16 +87,16 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
         TextView toNameTextView;
         TextView fromNameTextView;
         TextView timeTextView;
-        TextView dateTextView;
         TextView areFriendsTextView;
+        TextView listIndexTextView;
 
         public MessageViewHolder(View itemView) {
             super(itemView);
             toNameTextView = itemView.findViewById(R.id.to_name_text_view);
             fromNameTextView = itemView.findViewById(R.id.from_name_text_view);
             timeTextView = itemView.findViewById(R.id.time_text_view);
-            dateTextView = itemView.findViewById(R.id.date_text_view);
             areFriendsTextView = itemView.findViewById(R.id.are_friends_text_view);
+            listIndexTextView = itemView.findViewById(R.id.list_index_text_view);
         }
     }
 
@@ -105,16 +107,4 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
         notifyDataSetChanged();
     }
 
-
-    private String formatDate(Date dateObject) {
-        SimpleDateFormat dateFormatter = new SimpleDateFormat("MMM DD, yyyy");
-        String dateToDisplay = dateFormatter.format(dateObject);
-        return dateToDisplay;
-    }
-
-    private String formatTime(Date dateObject) {
-        SimpleDateFormat dateFormatter = new SimpleDateFormat("HH:mm a");
-        String timeToDisplay = dateFormatter.format(dateObject);
-        return timeToDisplay;
-    }
 }

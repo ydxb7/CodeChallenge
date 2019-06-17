@@ -8,16 +8,25 @@
     android:minHeight="?android:attr/listPreferredItemHeight"
     android:orientation="horizontal"
     android:padding="16dp">
+    <TextView
+        android:id="@+id/list_index_text-view"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:textSize="12dp"
+        android:layout_gravity="center_vertical"
+        tools:text="15"/>
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
+        android:layout_weight="2"
         android:orientation="vertical"
         android:paddingLeft="16dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="top"
             android:text="To: "/>
 
         <TextView
@@ -29,7 +38,7 @@
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_weight="4"
+        android:layout_weight="6"
         android:orientation="vertical"
         android:paddingLeft="16dp">
 
@@ -45,12 +54,13 @@
             android:layout_height="wrap_content"
             tools:text="Louis Scott"/>
 
+
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_weight="2"
+        android:layout_weight="5"
         android:orientation="vertical"
         android:paddingLeft="16dp"
         android:layout_gravity="end">
@@ -60,14 +70,16 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             tools:text="Friday"
+            android:textSize="10dp"
             android:layout_gravity="end"/>
 
-        <TextView
-            android:id="@+id/date_text_view"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            tools:text="Friday"
-            android:layout_gravity="end"/>
+        <!--<TextView-->
+            <!--android:id="@+id/date_text_view"-->
+            <!--android:layout_width="wrap_content"-->
+            <!--android:layout_height="wrap_content"-->
+            <!--tools:text="Friday"-->
+            <!--android:textSize="8dp"-->
+            <!--android:layout_gravity="end"/>-->
 
         <TextView
             android:id="@+id/are_friends_text_view"

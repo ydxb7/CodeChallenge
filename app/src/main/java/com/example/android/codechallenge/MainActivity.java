@@ -111,6 +111,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
              * ways. (in our humble opinion)
              */
             case R.id.action_refresh:
+                getSupportLoaderManager().restartLoader(MESSAGE_LOADER, null, this);
                 mAdapter = new MessageAdapter();
                 mRecyclerView.setAdapter(mAdapter);
                 return true;
