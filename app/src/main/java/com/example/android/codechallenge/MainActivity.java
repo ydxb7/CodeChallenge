@@ -30,6 +30,9 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     private MessageAdapter mAdapter;
     TextView mErrorMessageDisplay;
 
+    // Store a member variable for the listener
+    private EndlessRecyclerViewScrollListener scrollListener;
+
     private ProgressBar mLoadingIndicator;
 
     private static final String CODE_CHALLENGE_URL = "https://codechallenge.secrethouse.party/";
@@ -56,8 +59,34 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         mAdapter = new MessageAdapter();
         mRecyclerView.setAdapter(mAdapter);
 
+        // Retain an instance so that you can call `resetState()` for fresh searches
+        scrollListener = new EndlessRecyclerViewScrollListener(layoutManager) {
+            @Override
+            public void onLoadMore(int page, int totalItemsCount, RecyclerView view) {
+                // Triggered only when new data needs to be appended to the list
+                // Add whatever code is needed to append new items to the bottom of the list
+                loadNextDataFromApi(page);
+                Log.d(LOG_TAG, "onLoadMore  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+            }
+        };
+        // Adds the scroll listener to RecyclerView
+        mRecyclerView.addOnScrollListener(scrollListener);
+
         loadData();
     }
+
+    // Append the next page of data into the adapter
+    // This method probably sends out a network request and appends new data items to your adapter.
+    public void loadNextDataFromApi(int offset) {
+        // Send an API request to retrieve appropriate paginated data
+        //  --> Send the request including an offset value (i.e `page`) as a query parameter.
+        //  --> Deserialize and construct new model objects from the API response
+        //  --> Append the new data objects to the existing set of items inside the array of items
+        //  --> Notify the adapter of the new items made with `notifyItemRangeInserted()`
+        loadData();
+    }
+
+
 
     /**
      * This method will get the user's preferred location for weather, and then tell some
@@ -124,7 +153,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     @Override
     public Loader<List<Message>> onCreateLoader(int id, Bundle args) {
         mLoadingIndicator.setVisibility(View.VISIBLE);
-        Log.v(LOG_TAG , CODE_CHALLENGE_URL + "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        Log.v(LOG_TAG , CODE_CHALLENGE_URL);
         // Create a new loader for the given URL
         return new MessageLoader(this, CODE_CHALLENGE_URL);
     }
@@ -138,7 +167,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         // 数据集。这将触发 ListView 执行更新。
         if (data != null && !data.isEmpty()) {
             showMessageDataView();
-            mAdapter.setMessageData(data);
+            mAdapter.addMoreMessageData(data);
         } else{
             showErrorMessage();
         }

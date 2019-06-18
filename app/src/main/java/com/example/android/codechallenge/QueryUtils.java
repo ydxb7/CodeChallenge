@@ -129,7 +129,7 @@ public class QueryUtils {
         List<Message> messages = new ArrayList<Message>();
 
         int i = 0;
-        while (reader.hasNext() && i <= 200) {
+        while (reader.hasNext() && i <= 40) {
             messages.add(readMessage(reader));
             i++;
         }

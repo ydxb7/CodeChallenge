@@ -107,4 +107,11 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
         notifyDataSetChanged();
     }
 
+
+    //This method is used to add more data we get from the web.
+    public void addMoreMessageData(List<Message> data) {
+        mMessages.addAll(data);
+        notifyDataSetChanged();
+    }
+
 }
