@@ -1,5 +1,6 @@
 package com.example.android.codechallenge;
 
+import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -108,6 +109,10 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
                 getSupportLoaderManager().restartLoader(MESSAGE_LOADER, null, this);
                 mAdapter = new MessageAdapter(this);
                 mRecyclerView.setAdapter(mAdapter);
+                return true;
+            case R.id.action_settings:
+                Intent startSettingsActivity = new Intent(this, SettingsActivity.class);
+                startActivity(startSettingsActivity);
                 return true;
         }
 

@@ -2,7 +2,9 @@ package com.example.android.codechallenge;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.net.Uri;
+import android.support.v7.preference.PreferenceManager;
 import android.util.JsonReader;
 import android.util.Log;
 
@@ -117,12 +119,19 @@ public class QueryUtils {
     }
 
     public static void readMessagesObjects(Context context, JsonReader reader) {
-        ContentValues[] messageContentValues = new ContentValues[2000];
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        String numberOfMessages_string = sharedPreferences.getString(context.getString(R.string.pref_num_key),
+                context.getString(R.string.pref_num_default));
+        int numberMessagesDownloadFromWeb = Integer.parseInt(numberOfMessages_string);
+
+
+        ContentValues[] messageContentValues = new ContentValues[numberMessagesDownloadFromWeb];
 //        List<Message> messages = new ArrayList<Message>();
 
         try {
             int i = 0;
-            while (reader.hasNext() && i < 2000) {
+            while (reader.hasNext() && i < numberMessagesDownloadFromWeb) {
                 ContentValues contentValues = readMessage(reader);
                 if(contentValues != null){
                     messageContentValues[i] = contentValues;
