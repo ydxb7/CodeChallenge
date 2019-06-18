@@ -94,6 +94,75 @@ public class QueryUtils {
         return messages;
     }
 
+    /**
+     * Make an HTTP request to the given URL and return a String as the response.
+     */
+    public static JsonReader getReaderFromHttpRequest(URL url) throws IOException {
+        JsonReader reader = null;
+
+        // if the url is null, then return early
+        if(url == null){
+            return null;
+        }
+
+        HttpURLConnection urlConnection = null;
+        InputStream inputStream = null;
+        try {
+            urlConnection = (HttpsURLConnection) url.openConnection();
+            // Timeout for reading InputStream arbitrarily set to 3000ms.
+            urlConnection.setReadTimeout(3000);
+            // Timeout for connection.connect() arbitrarily set to 3000ms.
+            urlConnection.setConnectTimeout(3000);
+            // For this use case, set HTTP method to GET.
+            urlConnection.setRequestMethod("GET");
+            // Already true by default but setting just in case; needs to be true since this request
+            // is carrying an input (response) body.
+            urlConnection.setDoInput(true);
+            // Open communications link (network traffic occurs here).
+            urlConnection.connect();
+            int responseCode = urlConnection.getResponseCode();
+            if (responseCode != HttpsURLConnection.HTTP_OK) {
+                throw new IOException("HTTP error code: " + responseCode);
+            }
+            // Retrieve the response body as an InputStream.
+            inputStream = urlConnection.getInputStream();
+            reader = new JsonReader(new InputStreamReader(inputStream, "UTF-8"));
+            reader.setLenient(true);
+
+        } catch (IOException e) {
+            // Handle the exception
+            Log.e(LOG_TAG, "Problem retrieving the earthquake JSON results.", e);
+        } finally {
+//            if (urlConnection != null) {
+//                urlConnection.disconnect();
+//            }
+//            if (inputStream != null) {
+//                // function must handle java.io.IOException here
+//                inputStream.close();
+//            }
+        }
+        return reader;
+    }
+
+    public static JsonReader getDateFromUrlString(String url_string){
+        JsonReader reader = null;
+
+        if(url_string == null || url_string.length() < 1){
+            return null;
+        }
+        URL url = QueryUtils.createUrl(url_string);
+
+        try {
+            reader = QueryUtils.getReaderFromHttpRequest(url);
+//            earthquakes.addAll(QueryUtils.extractEarthquakes(jsonResponse));
+        } catch (IOException e) {
+            // Handle the IOException
+            Log.e(LOG_TAG, "Problem retrieving the earthquake JSON results.", e);
+        }
+
+        return reader;
+    }
+
 
     public static List<Message> fetchData(String url_string){
         // Perform HTTP request to the URL and receive a JSON response back
@@ -114,6 +183,15 @@ public class QueryUtils {
         return messages;
     }
 
+    public static List<Message> readFromJsonReader(JsonReader reader){
+        List<Message> messages = null;
+        try {
+            messages = readMessagesObjects(reader);
+        } catch (IOException e){
+            Log.e(LOG_TAG, "Problem reading messages from JsonReader");
+        }
+        return messages;
+    }
 
     public static List<Message> readFromStream(InputStream in) throws IOException {
         JsonReader reader = new JsonReader(new InputStreamReader(in, "UTF-8"));
@@ -129,7 +207,7 @@ public class QueryUtils {
         List<Message> messages = new ArrayList<Message>();
 
         int i = 0;
-        while (reader.hasNext() && i <= 40) {
+        while (reader.hasNext() && i <= 100) {
             messages.add(readMessage(reader));
             i++;
         }
