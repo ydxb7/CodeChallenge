@@ -3,4 +3,14 @@
     <string name="refresh">Refresh</string>
     <string name="no_data">No Data</string>
     <string name="sample_list_load_error">Sample list load error</string>
+    <string name="action_settings">Settings</string>
+
+    <!-- Label for the number preference -->
+    <string name="pref_num_label">Show Messages Number</string>
+
+    <!-- Key name for storing number in SharedPreferences -->
+    <string name="pref_num_key" translatable="false">number</string>
+
+    <!-- Default for number preference -->
+    <string name="pref_num_default" translatable="false">100</string>
 </resources>

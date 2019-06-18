@@ -1,31 +1,26 @@
 package com.example.android.codechallenge;
 
+import android.content.ContentValues;
 import android.content.Context;
-import android.content.res.AssetManager;
+import android.content.SharedPreferences;
 import android.net.Uri;
+import android.support.v7.preference.PreferenceManager;
 import android.util.JsonReader;
-import android.util.JsonToken;
 import android.util.Log;
-import android.widget.Toast;
-import android.util.JsonReader;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.example.android.codechallenge.data.MessageContract;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.List;
+import java.nio.charset.CharsetDecoder;
 
 import javax.net.ssl.HttpsURLConnection;
-import javax.sql.DataSource;
 
 public class QueryUtils {
 
@@ -48,12 +43,11 @@ public class QueryUtils {
     /**
      * Make an HTTP request to the given URL and return a String as the response.
      */
-    public static List<Message> makeHttpRequest(URL url) throws IOException {
-        List<Message> messages = new ArrayList<Message>();
+    public static void makeHttpRequest(Context context, URL url) {
 
         // if the url is null, then return early
-        if(url == null){
-            return messages;
+        if (url == null) {
+            return;
         }
 
         HttpURLConnection urlConnection = null;
@@ -61,9 +55,9 @@ public class QueryUtils {
         try {
             urlConnection = (HttpsURLConnection) url.openConnection();
             // Timeout for reading InputStream arbitrarily set to 3000ms.
-            urlConnection.setReadTimeout(3000);
+            urlConnection.setReadTimeout(300000);
             // Timeout for connection.connect() arbitrarily set to 3000ms.
-            urlConnection.setConnectTimeout(3000);
+            urlConnection.setConnectTimeout(300000);
             // For this use case, set HTTP method to GET.
             urlConnection.setRequestMethod("GET");
             // Already true by default but setting just in case; needs to be true since this request
@@ -77,7 +71,7 @@ public class QueryUtils {
             }
             // Retrieve the response body as an InputStream.
             inputStream = urlConnection.getInputStream();
-            messages = readFromStream(inputStream);
+            readFromStream(context, inputStream);
 
         } catch (IOException e) {
             // Handle the exception
@@ -88,10 +82,14 @@ public class QueryUtils {
             }
             if (inputStream != null) {
                 // function must handle java.io.IOException here
-                inputStream.close();
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    Log.e(LOG_TAG, "Problem closing input stream", e);
+                }
             }
         }
-        return messages;
+        return;
     }
 
     /**
@@ -164,82 +162,102 @@ public class QueryUtils {
     }
 
 
-    public static List<Message> fetchData(String url_string){
+    public static void loadDataIntoDatabase(Context context, String url_string) {
         // Perform HTTP request to the URL and receive a JSON response back
-        List<Message> messages = new ArrayList<>();
-        if(url_string == null || url_string.length() < 1){
-            return null;
+        if (url_string == null || url_string.length() < 1) {
+            return;
         }
         URL url = QueryUtils.createUrl(url_string);
 
-        try {
-            messages = QueryUtils.makeHttpRequest(url);
+        makeHttpRequest(context, url);
 //            earthquakes.addAll(QueryUtils.extractEarthquakes(jsonResponse));
-        } catch (IOException e) {
-            // Handle the IOException
-            Log.e(LOG_TAG, "Problem retrieving the earthquake JSON results.", e);
-        }
-
-        return messages;
+        return;
     }
 
-    public static List<Message> readFromJsonReader(JsonReader reader){
-        List<Message> messages = null;
-        try {
-            messages = readMessagesObjects(reader);
-        } catch (IOException e){
-            Log.e(LOG_TAG, "Problem reading messages from JsonReader");
-        }
-        return messages;
-    }
-
-    public static List<Message> readFromStream(InputStream in) throws IOException {
-        JsonReader reader = new JsonReader(new InputStreamReader(in, "UTF-8"));
+    public static void readFromStream(Context context, InputStream in) throws IOException {
+        NoNewLineInputStreamReader noNewLineInputStreamReader = new NoNewLineInputStreamReader(in, "UTF-8");
+        JsonReader reader = new JsonReader(noNewLineInputStreamReader);
         reader.setLenient(true);
         try {
-            return readMessagesObjects(reader);
+            readMessagesObjects(context, reader);
+            return;
         } finally {
             reader.close();
         }
     }
 
-    public static List<Message> readMessagesObjects(JsonReader reader) throws IOException {
-        List<Message> messages = new ArrayList<Message>();
+    public static void readMessagesObjects(Context context, JsonReader reader) {
 
-        int i = 0;
-        while (reader.hasNext() && i <= 100) {
-            messages.add(readMessage(reader));
-            i++;
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        String numberOfMessages_string = sharedPreferences.getString(context.getString(R.string.pref_num_key),
+                context.getString(R.string.pref_num_default));
+        int numberMessagesDownloadFromWeb = Integer.parseInt(numberOfMessages_string);
+
+        ContentValues[] messageContentValues = new ContentValues[numberMessagesDownloadFromWeb];
+//        List<Message> messages = new ArrayList<Message>();
+
+        try {
+            int i = 0;
+            while (reader.hasNext() && i < numberMessagesDownloadFromWeb) {
+                ContentValues contentValues = readMessage(reader);
+                if(contentValues != null){
+                    messageContentValues[i] = contentValues;
+                    i++;
+                }
+            }
+        } catch (IOException e) {
+            Log.e(LOG_TAG, "Problem reading messages objects");
+
         }
-        return messages;
+
+        deleteAllMessagesInDatabase(context);
+        context.getContentResolver().bulkInsert(
+                MessageContract.MessageEntry.CONTENT_URI,
+                messageContentValues);
+
+        return;
     }
 
 
-    public static Message readMessage(JsonReader reader) throws IOException {
+    public static ContentValues readMessage(JsonReader reader) throws IOException{
+        ContentValues weatherValues = new ContentValues();
+
         String toName = null;
         String fromName = null;
         Long timeInMilliseconds = null;
         boolean areFriends = false;
 
-        reader.beginObject();
-        while (reader.hasNext()) {
-            String name = reader.nextName();
 
-            if (name.equals("to")) {
-                toName = readName(reader);
-            } else if (name.equals("from")) {
-                fromName = readName(reader);
-            } else if (name.equals("timestamp")) {
-                timeInMilliseconds = reader.nextLong();
-            } else if (name.equals("areFriends")) {
-                areFriends = reader.nextBoolean();
-            }else {
-                reader.skipValue();
+        reader.beginObject();
+        try {
+            while (reader.hasNext()) {
+                String name = reader.nextName();
+
+                if (name.equals("to")) {
+                    toName = readName(reader);
+                } else if (name.equals("from")) {
+                    fromName = readName(reader);
+                } else if (name.equals("timestamp")) {
+                    timeInMilliseconds = reader.nextLong();
+                } else if (name.equals("areFriends")) {
+                    areFriends = reader.nextBoolean();
+                } else {
+                    reader.skipValue();
+                }
             }
+        } catch (IOException e){
+            reader.endObject();
+            return null;
+        } finally {
+            reader.endObject();
+//        Message message = new Message(toName, fromName, timeInMilliseconds, areFriends);
+            weatherValues.put(MessageContract.MessageEntry.COLUMN_TO_NAME, toName);
+            weatherValues.put(MessageContract.MessageEntry.COLUMN_From_NAME, fromName);
+            weatherValues.put(MessageContract.MessageEntry.COLUMN_TIME, timeInMilliseconds);
+            weatherValues.put(MessageContract.MessageEntry.COLUMN_ARE_FRIENDS, areFriends);
+            return weatherValues;
         }
-        reader.endObject();
-        Message message = new Message(toName, fromName, timeInMilliseconds, areFriends);
-        return message;
+
     }
 
     public static String readName(JsonReader reader) throws IOException {
@@ -250,11 +268,64 @@ public class QueryUtils {
             String name = reader.nextName();
             if (name.equals("name")) {
                 username = reader.nextString();
-            }else {
+            } else {
                 reader.skipValue();
             }
         }
         reader.endObject();
         return username;
     }
+
+    public static void deleteAllMessagesInDatabase(Context context) {
+        Uri uri = MessageContract.MessageEntry.CONTENT_URI;
+        context.getContentResolver().delete(uri, null, null);
+    }
+
+    public static class NoNewLineInputStreamReader extends InputStreamReader {
+
+
+        public NoNewLineInputStreamReader(InputStream in) {
+            super(in);
+        }
+
+        public NoNewLineInputStreamReader(InputStream in, String charsetName) throws UnsupportedEncodingException {
+            super(in, charsetName);
+        }
+
+        public NoNewLineInputStreamReader(InputStream in, Charset cs) {
+            super(in, cs);
+        }
+
+        public NoNewLineInputStreamReader(InputStream in, CharsetDecoder dec) {
+            super(in, dec);
+        }
+
+        @Override
+        public int read(char[] cbuf, int offset, int length) throws IOException {
+            int n = 0, c;
+            do {
+                c = this.read();
+                if(c != -1) {
+                    cbuf[offset + n] = (char) c;
+                    n++;
+                    length--;
+                } else {
+                    return c;
+                }
+            } while(c != -1 && length > 0);
+            return n;
+        }
+
+
+        @Override
+        public int read() throws IOException {
+            int c;
+            do {
+                c = super.read();
+            } while(c != -1 && (c == '\n' || c == '\r'));
+            return c;
+        }
+    }
 }
+
+

@@ -1,40 +1,55 @@
 package com.example.android.codechallenge;
 
 import android.content.Context;
+import android.database.Cursor;
 import android.support.v4.content.AsyncTaskLoader;
+import android.util.Log;
 
-import java.util.List;
+import com.example.android.codechallenge.data.MessageContract;
 
-public class MessageLoader extends AsyncTaskLoader<List<Message>> {
+public class MessageLoader extends AsyncTaskLoader<Cursor> {
 
-    private String mUrl;
+    private Context mContext;
+    private Cursor mCursor = null;
+
     private static String LOG_TAG = MessageLoader.class.getSimpleName();
 //    List<String> mCachedResults;
 
-    public MessageLoader(Context context, String url) {
+    public MessageLoader(Context context) {
         super(context);
-        mUrl = url;
+        mContext = context;
     }
 
 
     @Override
-    public List<Message> loadInBackground() {
-        if (mUrl == null) {
+    synchronized public Cursor loadInBackground() {
+        QueryUtils.loadDataIntoDatabase(mContext, MainActivity.CODE_CHALLENGE_URL);
+        try {
+            Cursor cursor = mContext.getContentResolver().query(MessageContract.MessageEntry.CONTENT_URI,
+                    null,
+                    null,
+                    null,
+                    MessageContract.MessageEntry.COLUMN_TIME + " DESC");
+
+            return cursor;
+
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Failed to asynchronously load data.");
+            e.printStackTrace();
             return null;
         }
-        // 执行网络请求、解析响应和提取列表。
-        List<Message> data = QueryUtils.fetchData(mUrl);
-        return data;
     }
 
     @Override
     protected void onStartLoading() {
-//        if(mCachedResults != null){
-//            deliverResult(mCachedResults);
-//        } else {
-//            forceLoad();
-//        }
-        forceLoad();
+
+        if (mCursor != null) {
+            // Delivers any previously loaded data immediately
+            deliverResult(mCursor);
+        } else {
+            // Force a new load
+            forceLoad();
+        }
     }
 
     @Override
@@ -43,9 +58,11 @@ public class MessageLoader extends AsyncTaskLoader<List<Message>> {
         cancelLoad();
     }
 
-//    @Override
-//    public void deliverResult(List<String> data) {
-//        mCachedResults = data;
-//        super.deliverResult(data);
-//    }
+    @Override
+    public void deliverResult(Cursor data) {
+        mCursor = data;
+        super.deliverResult(data);
+    }
+
+
 }
