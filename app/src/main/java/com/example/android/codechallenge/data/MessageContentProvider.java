@@ -1,14 +1,12 @@
 package com.example.android.codechallenge.data;
 
 import android.content.ContentProvider;
-import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.UriMatcher;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
-import android.support.annotation.NonNull;
 import android.util.Log;
 
 import com.example.android.codechallenge.data.MessageContract.MessageEntry;

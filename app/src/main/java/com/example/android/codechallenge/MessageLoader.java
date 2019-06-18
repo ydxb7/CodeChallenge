@@ -2,13 +2,10 @@ package com.example.android.codechallenge;
 
 import android.content.Context;
 import android.database.Cursor;
-import android.support.annotation.Nullable;
 import android.support.v4.content.AsyncTaskLoader;
 import android.util.Log;
 
 import com.example.android.codechallenge.data.MessageContract;
-
-import java.util.List;
 
 public class MessageLoader extends AsyncTaskLoader<Cursor> {
 
@@ -26,9 +23,7 @@ public class MessageLoader extends AsyncTaskLoader<Cursor> {
 
     @Override
     synchronized public Cursor loadInBackground() {
-        Log.d(LOG_TAG, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa2");
         QueryUtils.loadDataIntoDatabase(mContext, MainActivity.CODE_CHALLENGE_URL);
-        Log.d(LOG_TAG, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa3");
         try {
             Cursor cursor = mContext.getContentResolver().query(MessageContract.MessageEntry.CONTENT_URI,
                     null,
@@ -36,7 +31,6 @@ public class MessageLoader extends AsyncTaskLoader<Cursor> {
                     null,
                     MessageContract.MessageEntry.COLUMN_TIME + " DESC");
 
-//            Log.d(LOG_TAG, cursor.getCount() + "  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa4");
             return cursor;
 
         } catch (Exception e) {

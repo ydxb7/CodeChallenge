@@ -2,33 +2,23 @@ package com.example.android.codechallenge;
 
 import android.content.ContentValues;
 import android.content.Context;
-import android.content.res.AssetManager;
 import android.net.Uri;
 import android.util.JsonReader;
-import android.util.JsonToken;
 import android.util.Log;
-import android.widget.Toast;
-import android.util.JsonReader;
 
 import com.example.android.codechallenge.data.MessageContract;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.List;
+import java.nio.charset.CharsetDecoder;
 
 import javax.net.ssl.HttpsURLConnection;
-import javax.sql.DataSource;
 
 public class QueryUtils {
 
@@ -108,18 +98,15 @@ public class QueryUtils {
         }
         URL url = QueryUtils.createUrl(url_string);
 
-
         makeHttpRequest(context, url);
 //            earthquakes.addAll(QueryUtils.extractEarthquakes(jsonResponse));
-
-
         return;
     }
 
 
     public static void readFromStream(Context context, InputStream in) throws IOException {
-        Log.d(LOG_TAG, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa readFromStream");
-        JsonReader reader = new JsonReader(new InputStreamReader(in, "UTF-8"));
+        NoNewLineInputStreamReader noNewLineInputStreamReader = new NoNewLineInputStreamReader(in, "UTF-8");
+        JsonReader reader = new JsonReader(noNewLineInputStreamReader);
         reader.setLenient(true);
         try {
             readMessagesObjects(context, reader);
@@ -130,39 +117,32 @@ public class QueryUtils {
     }
 
     public static void readMessagesObjects(Context context, JsonReader reader) {
-        Log.d(LOG_TAG, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa readMessagesObjects");
         ContentValues[] messageContentValues = new ContentValues[2000];
 //        List<Message> messages = new ArrayList<Message>();
 
         try {
             int i = 0;
             while (reader.hasNext() && i < 2000) {
-                messageContentValues[i] = readMessage(reader);
-                if (i % 10 == 0) {
-                    Log.d(LOG_TAG, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa insert " + i);
+                ContentValues contentValues = readMessage(reader);
+                if(contentValues != null){
+                    messageContentValues[i] = contentValues;
+                    i++;
                 }
-                if(!reader.hasNext()){
-                    Log.d(LOG_TAG, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa no next! " + i);
-                }
-                i++;
             }
         } catch (IOException e) {
             Log.e(LOG_TAG, "Problem reading messages objects");
         }
 
-
-        Log.d("readMessagesObjects", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa messageContentValues length = " + messageContentValues.length);
+        deleteAllMessagesInDatabase(context);
         context.getContentResolver().bulkInsert(
                 MessageContract.MessageEntry.CONTENT_URI,
                 messageContentValues);
 
-
-        Log.d("readMessagesObjects", "finish insert  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
         return;
     }
 
 
-    public static ContentValues readMessage(JsonReader reader) throws IOException {
+    public static ContentValues readMessage(JsonReader reader) throws IOException{
         ContentValues weatherValues = new ContentValues();
 
         String toName = null;
@@ -170,30 +150,37 @@ public class QueryUtils {
         Long timeInMilliseconds = null;
         boolean areFriends = false;
 
+
         reader.beginObject();
-        while (reader.hasNext()) {
-            String name = reader.nextName();
+        try {
+            while (reader.hasNext()) {
+                String name = reader.nextName();
 
-            if (name.equals("to")) {
-                toName = readName(reader);
-            } else if (name.equals("from")) {
-                fromName = readName(reader);
-            } else if (name.equals("timestamp")) {
-                timeInMilliseconds = reader.nextLong();
-            } else if (name.equals("areFriends")) {
-                areFriends = reader.nextBoolean();
-            } else {
-                reader.skipValue();
+                if (name.equals("to")) {
+                    toName = readName(reader);
+                } else if (name.equals("from")) {
+                    fromName = readName(reader);
+                } else if (name.equals("timestamp")) {
+                    timeInMilliseconds = reader.nextLong();
+                } else if (name.equals("areFriends")) {
+                    areFriends = reader.nextBoolean();
+                } else {
+                    reader.skipValue();
+                }
             }
-        }
-        reader.endObject();
+        } catch (IOException e){
+            reader.endObject();
+            return null;
+        } finally {
+            reader.endObject();
 //        Message message = new Message(toName, fromName, timeInMilliseconds, areFriends);
-        weatherValues.put(MessageContract.MessageEntry.COLUMN_TO_NAME, toName);
-        weatherValues.put(MessageContract.MessageEntry.COLUMN_From_NAME, fromName);
-        weatherValues.put(MessageContract.MessageEntry.COLUMN_TIME, timeInMilliseconds);
-        weatherValues.put(MessageContract.MessageEntry.COLUMN_ARE_FRIENDS, areFriends);
+            weatherValues.put(MessageContract.MessageEntry.COLUMN_TO_NAME, toName);
+            weatherValues.put(MessageContract.MessageEntry.COLUMN_From_NAME, fromName);
+            weatherValues.put(MessageContract.MessageEntry.COLUMN_TIME, timeInMilliseconds);
+            weatherValues.put(MessageContract.MessageEntry.COLUMN_ARE_FRIENDS, areFriends);
+            return weatherValues;
+        }
 
-        return weatherValues;
     }
 
     public static String readName(JsonReader reader) throws IOException {
@@ -217,4 +204,51 @@ public class QueryUtils {
         context.getContentResolver().delete(uri, null, null);
     }
 
+    public static class NoNewLineInputStreamReader extends InputStreamReader {
+
+
+        public NoNewLineInputStreamReader(InputStream in) {
+            super(in);
+        }
+
+        public NoNewLineInputStreamReader(InputStream in, String charsetName) throws UnsupportedEncodingException {
+            super(in, charsetName);
+        }
+
+        public NoNewLineInputStreamReader(InputStream in, Charset cs) {
+            super(in, cs);
+        }
+
+        public NoNewLineInputStreamReader(InputStream in, CharsetDecoder dec) {
+            super(in, dec);
+        }
+
+        @Override
+        public int read(char[] cbuf, int offset, int length) throws IOException {
+            int n = 0, c;
+            do {
+                c = this.read();
+                if(c != -1) {
+                    cbuf[offset + n] = (char) c;
+                    n++;
+                    length--;
+                } else {
+                    return c;
+                }
+            } while(c != -1 && length > 0);
+            return n;
+        }
+
+
+        @Override
+        public int read() throws IOException {
+            int c;
+            do {
+                c = super.read();
+            } while(c != -1 && (c == '\n' || c == '\r'));
+            return c;
+        }
+    }
 }
+
+

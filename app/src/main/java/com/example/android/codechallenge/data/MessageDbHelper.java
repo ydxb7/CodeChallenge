@@ -3,6 +3,7 @@ package com.example.android.codechallenge.data;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+
 import com.example.android.codechallenge.data.MessageContract.MessageEntry;
 
 public class MessageDbHelper extends SQLiteOpenHelper {
