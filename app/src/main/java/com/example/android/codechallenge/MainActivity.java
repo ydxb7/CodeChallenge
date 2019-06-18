@@ -2,6 +2,7 @@ package com.example.android.codechallenge;
 
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -21,9 +22,11 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 
+import com.example.android.codechallenge.sync.MessageSyncIntentService;
+
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<List<Message>> {
+public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor> {
 
     public static final String LOG_TAG = MainActivity.class.getName();
     private RecyclerView mRecyclerView;
@@ -35,7 +38,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
 
     private ProgressBar mLoadingIndicator;
 
-    private static final String CODE_CHALLENGE_URL = "https://codechallenge.secrethouse.party/";
+    public static final String CODE_CHALLENGE_URL = "https://codechallenge.secrethouse.party/";
     private static final int MESSAGE_LOADER = 22;
 
     @Override
@@ -56,37 +59,40 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
 //        Use this setting to improve performance, because changes in content do not
 //        change the child layout size in the RecyclerView
         mRecyclerView.setHasFixedSize(true);
-        mAdapter = new MessageAdapter();
+        mAdapter = new MessageAdapter(this);
         mRecyclerView.setAdapter(mAdapter);
-
-        // Retain an instance so that you can call `resetState()` for fresh searches
-        scrollListener = new EndlessRecyclerViewScrollListener(layoutManager) {
-            @Override
-            public void onLoadMore(int page, int totalItemsCount, RecyclerView view) {
-                // Triggered only when new data needs to be appended to the list
-                // Add whatever code is needed to append new items to the bottom of the list
-                loadNextDataFromApi(page);
-                Log.d(LOG_TAG, "onLoadMore  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-            }
-        };
-        // Adds the scroll listener to RecyclerView
-        mRecyclerView.addOnScrollListener(scrollListener);
+//
+//        // Retain an instance so that you can call `resetState()` for fresh searches
+//        scrollListener = new EndlessRecyclerViewScrollListener(layoutManager) {
+//            @Override
+//            public void onLoadMore(int page, int totalItemsCount, RecyclerView view) {
+//                // Triggered only when new data needs to be appended to the list
+//                // Add whatever code is needed to append new items to the bottom of the list
+//                loadNextDataFromApi(page);
+//                Log.d(LOG_TAG, "onLoadMore  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+//            }
+//        };
+//        // Adds the scroll listener to RecyclerView
+//        mRecyclerView.addOnScrollListener(scrollListener);
 
         loadData();
     }
 
-    // Append the next page of data into the adapter
-    // This method probably sends out a network request and appends new data items to your adapter.
-    public void loadNextDataFromApi(int offset) {
-        // Send an API request to retrieve appropriate paginated data
-        //  --> Send the request including an offset value (i.e `page`) as a query parameter.
-        //  --> Deserialize and construct new model objects from the API response
-        //  --> Append the new data objects to the existing set of items inside the array of items
-        //  --> Notify the adapter of the new items made with `notifyItemRangeInserted()`
-        loadData();
-    }
+//    // Append the next page of data into the adapter
+//    // This method probably sends out a network request and appends new data items to your adapter.
+//    public void loadNextDataFromApi(int offset) {
+//        // Send an API request to retrieve appropriate paginated data
+//        //  --> Send the request including an offset value (i.e `page`) as a query parameter.
+//        //  --> Deserialize and construct new model objects from the API response
+//        //  --> Append the new data objects to the existing set of items inside the array of items
+//        //  --> Notify the adapter of the new items made with `notifyItemRangeInserted()`
+//        loadData();
+//    }
 
-
+//    public static void startImmediateSync(@NonNull final Context context) {
+//        Intent intentToSyncImmediately = new Intent(context, MessageSyncIntentService.class);
+//        context.startService(intentToSyncImmediately);
+//    }
 
     /**
      * This method will get the user's preferred location for weather, and then tell some
@@ -96,7 +102,8 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         showMessageDataView();
 
         LoaderManager loaderManager = getSupportLoaderManager();
-        Loader<List<String>> MessageLoader = loaderManager.getLoader(MESSAGE_LOADER);
+        Loader<Cursor> MessageLoader = loaderManager.getLoader(MESSAGE_LOADER);
+
         if (MessageLoader == null) {
             loaderManager.initLoader(MESSAGE_LOADER, null, this);
         } else {
@@ -141,7 +148,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
              */
             case R.id.action_refresh:
                 getSupportLoaderManager().restartLoader(MESSAGE_LOADER, null, this);
-                mAdapter = new MessageAdapter();
+                mAdapter = new MessageAdapter(this);
                 mRecyclerView.setAdapter(mAdapter);
                 return true;
         }
@@ -151,30 +158,25 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
 
 
     @Override
-    public Loader<List<Message>> onCreateLoader(int id, Bundle args) {
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+
+        QueryUtils.deleteAllMessagesInDatabase(this);
         mLoadingIndicator.setVisibility(View.VISIBLE);
         Log.v(LOG_TAG , CODE_CHALLENGE_URL);
         // Create a new loader for the given URL
-        return new MessageLoader(this, CODE_CHALLENGE_URL);
+
+        return new MessageLoader(this);
     }
 
     @Override
-    public void onLoadFinished(Loader<List<Message>> loader, List<Message> data) {
-        // Hide loading indicator because the data has been loaded
+    public void onLoadFinished(@NonNull Loader<Cursor> loader, Cursor data) {
         mLoadingIndicator.setVisibility(View.GONE);
-
-        // 如果存在 {@link Earthquake} 的有效列表，则将其添加到适配器的
-        // 数据集。这将触发 ListView 执行更新。
-        if (data != null && !data.isEmpty()) {
-            showMessageDataView();
-            mAdapter.addMoreMessageData(data);
-        } else{
-            showErrorMessage();
-        }
+        showMessageDataView();
+        mAdapter.swapCursor(data);
     }
 
     @Override
-    public void onLoaderReset(Loader<List<Message>> loader) {
-
+    public void onLoaderReset(Loader<Cursor> loader) {
+        mAdapter.swapCursor(null);
     }
 }

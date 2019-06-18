@@ -9,6 +9,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.support.annotation.NonNull;
+import android.util.Log;
 
 import com.example.android.codechallenge.data.MessageContract.MessageEntry;
 
@@ -67,6 +68,8 @@ public class MessageContentProvider extends ContentProvider {
     @Override
     public int bulkInsert(Uri uri, ContentValues[] values) {
         final SQLiteDatabase db = mMessageDbHelper.getWritableDatabase();
+
+        Log.d("bulkInsert", "match = " + sUriMatcher.match(uri));
 
         switch (sUriMatcher.match(uri)) {
 
@@ -184,6 +187,7 @@ public class MessageContentProvider extends ContentProvider {
         final SQLiteDatabase db = mMessageDbHelper.getWritableDatabase();
 
         int match = sUriMatcher.match(uri);
+
         // Keep track of the number of deleted tasks
         int tasksDeleted; // starts as 0
 
@@ -196,6 +200,9 @@ public class MessageContentProvider extends ContentProvider {
                 String id = uri.getPathSegments().get(1);
                 // Use selections/selectionArgs to filter for this ID
                 tasksDeleted = db.delete(TABLE_NAME, "_id=?", new String[]{id});
+                break;
+            case MESSAGES:
+                tasksDeleted = db.delete(TABLE_NAME, selection, selectionArgs);
                 break;
             default:
                 throw new UnsupportedOperationException("Unknown uri: " + uri);

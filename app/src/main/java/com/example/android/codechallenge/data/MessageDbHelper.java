@@ -11,7 +11,7 @@ public class MessageDbHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "messagesDb.db";
 
     // If you change the database schema, you must increment the database version
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
 
 
     // Constructor
@@ -29,10 +29,10 @@ public class MessageDbHelper extends SQLiteOpenHelper {
         // Create tasks table (careful to follow SQL formatting rules)
         final String CREATE_TABLE = "CREATE TABLE "  + MessageContract.MessageEntry.TABLE_NAME + " (" +
                 MessageEntry._ID                + " INTEGER PRIMARY KEY, " +
-                MessageEntry.COLUMN_TO_NAME + " TEXT NOT NULL, " +
-                MessageEntry.COLUMN_From_NAME + " TEXT NOT NULL, " +
-                MessageEntry.COLUMN_TIME + " LONG NOT NULL, " +
-                MessageEntry.COLUMN_ARE_FRIENDS    + " INTEGER NOT NULL);";
+                MessageEntry.COLUMN_TO_NAME     + " TEXT, " +
+                MessageEntry.COLUMN_From_NAME   + " TEXT, " +
+                MessageEntry.COLUMN_TIME        + " LONG, " +
+                MessageEntry.COLUMN_ARE_FRIENDS + " INTEGER);";
 
         db.execSQL(CREATE_TABLE);
     }

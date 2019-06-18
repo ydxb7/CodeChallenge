@@ -1,5 +1,6 @@
 package com.example.android.codechallenge;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.net.Uri;
@@ -8,6 +9,8 @@ import android.util.JsonToken;
 import android.util.Log;
 import android.widget.Toast;
 import android.util.JsonReader;
+
+import com.example.android.codechallenge.data.MessageContract;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -48,12 +51,11 @@ public class QueryUtils {
     /**
      * Make an HTTP request to the given URL and return a String as the response.
      */
-    public static List<Message> makeHttpRequest(URL url) throws IOException {
-        List<Message> messages = new ArrayList<Message>();
+    public static void makeHttpRequest(Context context, URL url) {
 
         // if the url is null, then return early
-        if(url == null){
-            return messages;
+        if (url == null) {
+            return;
         }
 
         HttpURLConnection urlConnection = null;
@@ -61,9 +63,9 @@ public class QueryUtils {
         try {
             urlConnection = (HttpsURLConnection) url.openConnection();
             // Timeout for reading InputStream arbitrarily set to 3000ms.
-            urlConnection.setReadTimeout(3000);
+            urlConnection.setReadTimeout(300000);
             // Timeout for connection.connect() arbitrarily set to 3000ms.
-            urlConnection.setConnectTimeout(3000);
+            urlConnection.setConnectTimeout(300000);
             // For this use case, set HTTP method to GET.
             urlConnection.setRequestMethod("GET");
             // Already true by default but setting just in case; needs to be true since this request
@@ -77,7 +79,7 @@ public class QueryUtils {
             }
             // Retrieve the response body as an InputStream.
             inputStream = urlConnection.getInputStream();
-            messages = readFromStream(inputStream);
+            readFromStream(context, inputStream);
 
         } catch (IOException e) {
             // Handle the exception
@@ -88,56 +90,81 @@ public class QueryUtils {
             }
             if (inputStream != null) {
                 // function must handle java.io.IOException here
-                inputStream.close();
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    Log.e(LOG_TAG, "Problem closing input stream", e);
+                }
             }
         }
-        return messages;
+        return;
     }
 
 
-    public static List<Message> fetchData(String url_string){
+    public static void loadDataIntoDatabase(Context context, String url_string) {
         // Perform HTTP request to the URL and receive a JSON response back
-        List<Message> messages = new ArrayList<>();
-        if(url_string == null || url_string.length() < 1){
-            return null;
+        if (url_string == null || url_string.length() < 1) {
+            return;
         }
         URL url = QueryUtils.createUrl(url_string);
 
-        try {
-            messages = QueryUtils.makeHttpRequest(url);
-//            earthquakes.addAll(QueryUtils.extractEarthquakes(jsonResponse));
-        } catch (IOException e) {
-            // Handle the IOException
-            Log.e(LOG_TAG, "Problem retrieving the earthquake JSON results.", e);
-        }
 
-        return messages;
+        makeHttpRequest(context, url);
+//            earthquakes.addAll(QueryUtils.extractEarthquakes(jsonResponse));
+
+
+        return;
     }
 
 
-    public static List<Message> readFromStream(InputStream in) throws IOException {
+    public static void readFromStream(Context context, InputStream in) throws IOException {
+        Log.d(LOG_TAG, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa readFromStream");
         JsonReader reader = new JsonReader(new InputStreamReader(in, "UTF-8"));
         reader.setLenient(true);
         try {
-            return readMessagesObjects(reader);
+            readMessagesObjects(context, reader);
+            return;
         } finally {
             reader.close();
         }
     }
 
-    public static List<Message> readMessagesObjects(JsonReader reader) throws IOException {
-        List<Message> messages = new ArrayList<Message>();
+    public static void readMessagesObjects(Context context, JsonReader reader) {
+        Log.d(LOG_TAG, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa readMessagesObjects");
+        ContentValues[] messageContentValues = new ContentValues[2000];
+//        List<Message> messages = new ArrayList<Message>();
 
-        int i = 0;
-        while (reader.hasNext() && i <= 40) {
-            messages.add(readMessage(reader));
-            i++;
+        try {
+            int i = 0;
+            while (reader.hasNext() && i < 2000) {
+                messageContentValues[i] = readMessage(reader);
+                if (i % 10 == 0) {
+                    Log.d(LOG_TAG, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa insert " + i);
+                }
+                if(!reader.hasNext()){
+                    Log.d(LOG_TAG, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa no next! " + i);
+                }
+                i++;
+            }
+        } catch (IOException e) {
+            Log.e(LOG_TAG, "Problem reading messages objects");
         }
-        return messages;
+
+
+        Log.d("readMessagesObjects", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa messageContentValues length = " + messageContentValues.length);
+        context.getContentResolver().bulkInsert(
+                MessageContract.MessageEntry.CONTENT_URI,
+                messageContentValues);
+
+
+        Log.d("readMessagesObjects", "finish insert  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        return;
     }
 
 
-    public static Message readMessage(JsonReader reader) throws IOException {
+    public static ContentValues readMessage(JsonReader reader) throws IOException {
+        ContentValues weatherValues = new ContentValues();
+
         String toName = null;
         String fromName = null;
         Long timeInMilliseconds = null;
@@ -155,13 +182,18 @@ public class QueryUtils {
                 timeInMilliseconds = reader.nextLong();
             } else if (name.equals("areFriends")) {
                 areFriends = reader.nextBoolean();
-            }else {
+            } else {
                 reader.skipValue();
             }
         }
         reader.endObject();
-        Message message = new Message(toName, fromName, timeInMilliseconds, areFriends);
-        return message;
+//        Message message = new Message(toName, fromName, timeInMilliseconds, areFriends);
+        weatherValues.put(MessageContract.MessageEntry.COLUMN_TO_NAME, toName);
+        weatherValues.put(MessageContract.MessageEntry.COLUMN_From_NAME, fromName);
+        weatherValues.put(MessageContract.MessageEntry.COLUMN_TIME, timeInMilliseconds);
+        weatherValues.put(MessageContract.MessageEntry.COLUMN_ARE_FRIENDS, areFriends);
+
+        return weatherValues;
     }
 
     public static String readName(JsonReader reader) throws IOException {
@@ -172,11 +204,17 @@ public class QueryUtils {
             String name = reader.nextName();
             if (name.equals("name")) {
                 username = reader.nextString();
-            }else {
+            } else {
                 reader.skipValue();
             }
         }
         reader.endObject();
         return username;
     }
+
+    public static void deleteAllMessagesInDatabase(Context context) {
+        Uri uri = MessageContract.MessageEntry.CONTENT_URI;
+        context.getContentResolver().delete(uri, null, null);
+    }
+
 }

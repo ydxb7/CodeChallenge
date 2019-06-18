@@ -1,6 +1,8 @@
 package com.example.android.codechallenge;
 
 import android.content.Context;
+import android.database.Cursor;
+import android.graphics.drawable.GradientDrawable;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -9,35 +11,21 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.example.android.codechallenge.data.MessageContract;
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageViewHolder>{
+public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageViewHolder> {
     private static final String TAG = MessageAdapter.class.getSimpleName();
 
-    private static final ArrayList<String> mDummyData = new ArrayList<>();
-    private static List<Message> mMessages = new ArrayList<>();
+    private Cursor mCursor;
+    private Context mContext;
 
-    public MessageAdapter(){
-//        mDummyData.add("message1");
-//        mDummyData.add("message2");
-//        mDummyData.add("message3");
-//        mDummyData.add("message4");
-//        mDummyData.add("message5");
-//        mDummyData.add("message6");
-//        mDummyData.add("message7");
-//        mDummyData.add("message8");
-//        mDummyData.add("message9");
-//        mDummyData.add("message10");
-//        mDummyData.add("message11");
-//        mDummyData.add("message12");
-//        mDummyData.add("message13");
-//        mDummyData.add("message14");
-//        mDummyData.add("message15");
-//        mDummyData.add("message16");
-//        mNumberItems = mDummyData.size();
+    public MessageAdapter(Context context) {
+        mContext = context;
     }
 
     // This gets called when each new ViewHolder is created.
@@ -58,17 +46,30 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
     // OnBindViewHolder is called by the RecyclerView to display the data at the specified position.
     @Override
     public void onBindViewHolder(MessageViewHolder messageViewHolder, int position) {
-        Message message = mMessages.get(position);
+        // Indices for the _id, description, and priority columns
+        int toNameIndex = mCursor.getColumnIndex(MessageContract.MessageEntry.COLUMN_TO_NAME);
+        int fromNameIndex = mCursor.getColumnIndex(MessageContract.MessageEntry.COLUMN_From_NAME);
+        int timeIndex = mCursor.getColumnIndex(MessageContract.MessageEntry.COLUMN_TIME);
+        int areFriendsIndex = mCursor.getColumnIndex(MessageContract.MessageEntry.COLUMN_ARE_FRIENDS);
 
-        messageViewHolder.toNameTextView.setText(message.getToName());
-        messageViewHolder.fromNameTextView.setText(message.getFromName());
-        if(message.getAreFriends()){
+        mCursor.moveToPosition(position); // get to the right location in the cursor
+
+        // Determine the values of the wanted data
+        String toName = mCursor.getString(toNameIndex);
+        String fromName = mCursor.getString(fromNameIndex);
+        Long time = mCursor.getLong(timeIndex);
+        int areFriends = mCursor.getInt(areFriendsIndex);
+
+
+        messageViewHolder.toNameTextView.setText(toName);
+        messageViewHolder.fromNameTextView.setText(fromName);
+        if (areFriends > 0) {
             messageViewHolder.areFriendsTextView.setText("Friends");
-        }else {
+        } else {
             messageViewHolder.areFriendsTextView.setText("Not Friends");
         }
 
-        Date dateObject = new Date(message.getTime());
+        Date dateObject = new Date(time);
 
         SimpleDateFormat timeFormatter = new SimpleDateFormat("hh:mm:ss MM/dd/yyyy");
         String timeString = timeFormatter.format(dateObject);
@@ -79,11 +80,32 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
 
     @Override
     public int getItemCount() {
-        return mMessages.size();
+        if (mCursor == null) {
+            return 0;
+        }
+        return mCursor.getCount();
     }
 
+    /**
+     * When data changes and a re-query occurs, this function swaps the old Cursor
+     * with a newly updated Cursor (Cursor c) that is passed in.
+     */
+    public Cursor swapCursor(Cursor c) {
+        // check if this cursor is the same as the previous cursor (mCursor)
+        if (mCursor == c) {
+            return null; // bc nothing has changed
+        }
+        Cursor temp = mCursor;
+        this.mCursor = c; // new cursor value assigned
 
-    class MessageViewHolder extends RecyclerView.ViewHolder{
+        //check if this is a valid cursor, then update the cursor
+        if (c != null) {
+            this.notifyDataSetChanged();
+        }
+        return temp;
+    }
+
+    class MessageViewHolder extends RecyclerView.ViewHolder {
         TextView toNameTextView;
         TextView fromNameTextView;
         TextView timeTextView;
@@ -101,17 +123,17 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
     }
 
     //This method is used to set the data we get from the web.
-
-    public void setMessageData(List<Message> data) {
-        mMessages = data;
-        notifyDataSetChanged();
-    }
-
-
-    //This method is used to add more data we get from the web.
-    public void addMoreMessageData(List<Message> data) {
-        mMessages.addAll(data);
-        notifyDataSetChanged();
-    }
+//
+//    public void setMessageData(List<Message> data) {
+//        mMessages = data;
+//        notifyDataSetChanged();
+//    }
+//
+//
+//    //This method is used to add more data we get from the web.
+//    public void addMoreMessageData(List<Message> data) {
+//        mMessages.addAll(data);
+//        notifyDataSetChanged();
+//    }
 
 }
